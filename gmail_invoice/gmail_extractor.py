@@ -81,7 +81,13 @@ class GMailClient:
 class GMailInvoiceExtractor:
     """Extract purchase emails and PDF attachments for a given date."""
 
-    def __init__(self, client, target_date: date, output_dir: str | None = None):
+    def __init__(
+        self,
+        client,
+        target_date: date,
+        output_dir: str | None = None,
+        invoice_parser=None,
+    ):
         self.client = client
         self.target_date = target_date
         if output_dir is None:
@@ -90,6 +96,7 @@ class GMailInvoiceExtractor:
                 f"invoices_{self.target_date.strftime('%Y_%m_%d')}",
             )
         self.output_dir = os.path.expanduser(output_dir)
+        self.invoice_parser = invoice_parser
 
     @staticmethod
     def _decode_gmail_base64(encoded: str) -> bytes:
@@ -197,6 +204,9 @@ class GMailInvoiceExtractor:
 
         extracted_data["email_body"] = "\n".join(body_chunks)
         extracted_data["pdf_filenames"] = pdf_filenames
+
+        if self.invoice_parser is not None:
+            extracted_data["invoice"] = self.invoice_parser.parse(extracted_data, self.output_dir)
 
         json_path = os.path.join(self.output_dir, f"email_{created_ts}.json")
         with open(json_path, "w", encoding="utf-8") as json_file:

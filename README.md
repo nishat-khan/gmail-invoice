@@ -2,7 +2,7 @@
 
 Download purchase invoice emails and PDF attachments from Gmail (read-only).
 
-For a given date, the tool searches Gmail's **Purchases** category, saves each email as JSON, and downloads any PDF attachments into a dated folder in your current working directory.
+For a given date, the tool searches Gmail's **Purchases** category, saves each email as JSON, downloads any PDF attachments, and uses an LLM to extract structured invoice fields into the same JSON file.
 
 ## Install
 
@@ -37,6 +37,29 @@ pip install gmail-invoice
 
    Replace `/Users/you` with your username (or use the full expanded path to `~/.config/gmail-invoice`). On first run, OAuth will create `token.json` in that config folder.
 
+4. Add LLM settings in your config folder for invoice parsing:
+
+   **Anthropic (default)** — sends PDFs natively and uses structured outputs:
+
+   ```bash
+   cat > ~/.config/gmail-invoice/llm.env <<'EOF'
+   LLM_PROVIDER=anthropic
+   LLM_API_KEY=sk-ant-api03-your-key-here
+   LLM_MODEL=claude-sonnet-4-6
+   EOF
+   ```
+
+   **OpenAI-compatible** (OpenAI, Groq, Together, Ollama shim, etc.):
+
+   ```bash
+   cat > ~/.config/gmail-invoice/llm.env <<'EOF'
+   LLM_PROVIDER=openai
+   LLM_API_KEY=sk-your-key-here
+   LLM_BASE_URL=https://api.openai.com/v1
+   LLM_MODEL=gpt-4o-mini
+   EOF
+   ```
+
 ## Usage
 
 ```bash
@@ -45,6 +68,9 @@ gmail-invoice
 
 # Specific date
 gmail-invoice --date 2026-05-04
+
+# Download only — skip LLM parsing
+gmail-invoice --date 2026-05-04 --skip-parse
 ```
 
 Equivalent module invocation:
@@ -57,13 +83,29 @@ python -m gmail_invoice --date 2026-05-04
 
 Each run creates a folder (default: `invoices_YYYY_MM_DD/` in the current directory) containing:
 
-- `email_YYYY_MM_DD_HH_MM_SS.json` — sender, subject, body text
+- `email_YYYY_MM_DD_HH_MM_SS.json` — sender, subject, body text, and parsed `invoice` object
 - `*.pdf` — invoice attachments with a timestamp suffix
+
+Example `invoice` fields in the JSON:
+
+```json
+{
+  "is_invoice": true,
+  "vendor_name": "Apple",
+  "invoice_number": "INV-2026-9912",
+  "invoice_date": "2026-05-22",
+  "currency": "USD",
+  "subtotal": 1199.0,
+  "tax": 100.0,
+  "total": 1299.0,
+  "line_items": [{"description": "MacBook", "quantity": 1, "unit_price": 1199.0, "amount": 1199.0}]
+}
+```
 
 ## Development
 
 ```bash
-git clone https://github.com/nish/gmail-invoice.git
+git clone https://github.com/nishat-khan/gmail-invoice.git
 cd gmail-invoice
 pip install -e ".[dev]"
 pytest

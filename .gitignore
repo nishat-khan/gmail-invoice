@@ -230,4 +230,4 @@ __marimo__/
 # Local invoice output (generated at runtime)
 invoices_*/
 gmail_invoice/invoices_*/
-gmail_invoice/mock_purchase_record/
+tests/fixtures/sample_output/

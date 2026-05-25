@@ -4,10 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gmail-invoice"
-version = "0.1.0"
-description = "Download purchase invoice emails and PDF attachments from Gmail (read-only)"
+version = "0.2.1"
+description = "Download Gmail purchase emails and PDFs, extract structured invoice fields with an LLM Model."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [{ name = "Nishat Khan", email = "nishatconnect@gmail.com" }]
 keywords = ["gmail", "invoice", "pdf", "email"]
@@ -15,7 +16,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -23,8 +23,11 @@ classifiers = [
     "Topic :: Office/Business :: Financial :: Accounting",
 ]
 dependencies = [
+    "anthropic>=0.49.0",
     "google-api-python-client>=2.100.0",
     "google-auth-oauthlib>=1.2.0",
+    "openai>=1.40.0",
+    "pypdf>=4.0.0",
     "python-dotenv>=1.0.0",
 ]
 
@@ -35,13 +38,16 @@ dev = ["build", "pytest", "ruff", "twine"]
 gmail-invoice = "gmail_invoice.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/nish/gmail-invoice"
-Repository = "https://github.com/nish/gmail-invoice"
-Issues = "https://github.com/nish/gmail-invoice/issues"
+Homepage = "https://github.com/nishat-khan/gmail-invoice"
+Repository = "https://github.com/nishat-khan/gmail-invoice"
+Issues = "https://github.com/nishat-khan/gmail-invoice/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["gmail_invoice"]
+
+[tool.setuptools.exclude-package-data]
+"gmail_invoice" = ["invoices_*/*", "mock_purchase_record/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
