@@ -7,6 +7,7 @@ import sys
 from datetime import date, datetime
 
 from dotenv import load_dotenv
+from googleapiclient.errors import HttpError
 
 from gmail_invoice.gmail_extractor import GMailClient, GMailInvoiceExtractor
 from gmail_invoice.invoice_parser import create_invoice_parser
@@ -77,6 +78,9 @@ def main():
         extractor.extract_purchases_for_date()
     except (ValueError, FileNotFoundError) as exc:
         logger.error("%s", exc)
+        sys.exit(1)
+    except HttpError as exc:
+        logger.error("Gmail API request failed after retries: %s", exc)
         sys.exit(1)
 
 

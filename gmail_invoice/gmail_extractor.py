@@ -11,6 +11,8 @@ import base64
 import json
 import logging
 import os
+import random
+import time
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parseaddr, parsedate_to_datetime
 
@@ -18,10 +20,37 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+DEFAULT_MAX_RETRIES = 5
+DEFAULT_MAX_BACKOFF_S = 64.0
+RATE_LIMIT_REASONS = frozenset({"rateLimitExceeded", "userRateLimitExceeded"})
+
+
+def _gmail_error_reasons(error: HttpError) -> set[str]:
+    reasons: set[str] = set()
+    if error.error_details:
+        for detail in error.error_details:
+            reason = detail.get("reason")
+            if reason:
+                reasons.add(reason)
+    return reasons
+
+
+def _is_retryable_gmail_error(error: HttpError) -> bool:
+    status = int(error.resp.status)
+    if status == 429:
+        return True
+    if status == 403:
+        return bool(_gmail_error_reasons(error) & RATE_LIMIT_REASONS)
+    return False
+
+
+def _backoff_seconds(attempt: int, max_backoff: float) -> float:
+    return min((2**attempt) + random.random(), max_backoff)
 
 
 class GMailClient:
@@ -48,34 +77,56 @@ class GMailClient:
                 token_file.write(creds.to_json())
 
         self.service = build("gmail", "v1", credentials=creds)
+        self._max_retries = int(os.environ.get("GMAIL_API_MAX_RETRIES", DEFAULT_MAX_RETRIES))
+        self._max_backoff_s = float(
+            os.environ.get("GMAIL_API_MAX_BACKOFF_S", DEFAULT_MAX_BACKOFF_S)
+        )
+
+    def _execute_with_retry(self, request):
+        attempt = 0
+        while True:
+            try:
+                return request.execute()
+            except HttpError as exc:
+                if attempt >= self._max_retries or not _is_retryable_gmail_error(exc):
+                    raise
+                delay = _backoff_seconds(attempt, self._max_backoff_s)
+                logger.warning(
+                    "Gmail API rate limit hit (retry %d/%d); waiting %.1fs",
+                    attempt + 1,
+                    self._max_retries,
+                    delay,
+                )
+                time.sleep(delay)
+                attempt += 1
 
     def list_messages(self, query: str) -> dict:
         logger.info("Listing messages: %s", query)
-        return (
+        request = (
             self.service.users()
             .messages()
             .list(userId="me", q=query, maxResults=10)
-            .execute()
         )
+        return self._execute_with_retry(request)
 
     def get_message(self, message_id: str) -> dict:
         logger.info("Fetching message %s", message_id)
-        return (
+        request = (
             self.service.users()
             .messages()
             .get(userId="me", id=message_id, format="full")
-            .execute()
         )
+        return self._execute_with_retry(request)
 
     def get_attachment(self, message_id: str, attachment_id: str) -> dict:
         logger.info("Fetching attachment %s for message %s", attachment_id, message_id)
-        return (
+        request = (
             self.service.users()
             .messages()
             .attachments()
             .get(userId="me", messageId=message_id, id=attachment_id)
-            .execute()
         )
+        return self._execute_with_retry(request)
 
 
 class GMailInvoiceExtractor:
