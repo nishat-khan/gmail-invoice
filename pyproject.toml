@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gmail-invoice"
+version = "0.1.0"
+description = "Download purchase invoice emails and PDF attachments from Gmail (read-only)"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Nishat Khan", email = "nishatconnect@gmail.com" }]
+keywords = ["gmail", "invoice", "pdf", "email"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Accounting",
+]
+dependencies = [
+    "google-api-python-client>=2.100.0",
+    "google-auth-oauthlib>=1.2.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["build", "pytest", "ruff", "twine"]
+
+[project.scripts]
+gmail-invoice = "gmail_invoice.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/nish/gmail-invoice"
+Repository = "https://github.com/nish/gmail-invoice"
+Issues = "https://github.com/nish/gmail-invoice/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gmail_invoice"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
